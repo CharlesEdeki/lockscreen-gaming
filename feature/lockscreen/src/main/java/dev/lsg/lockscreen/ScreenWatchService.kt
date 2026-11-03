@@ -4,6 +4,7 @@ import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -23,12 +24,27 @@ class ScreenWatchService : Service() {
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
-            if (locked && Settings.canDrawOverlays(context)) {
-                context.startActivity(
-                    Intent(context, LockGameActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+            if (!getSystemService(KeyguardManager::class.java).isKeyguardLocked) return
+            val launch = Intent(context, LockGameActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+            // Route 1: direct launch (works where the overlay exemption is honoured).
+            if (Settings.canDrawOverlays(context)) {
+                try { context.startActivity(launch) } catch (_: Exception) {}
             }
+
+            // Route 2: full-screen-intent notification, the sanctioned way to appear over the keyguard.
+            val pending = PendingIntent.getActivity(
+                context, 0, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            val n = Notification.Builder(context, LAUNCH_CHANNEL)
+                .setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle("Play a quick game")
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setFullScreenIntent(pending, true)
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .build()
+            getSystemService(NotificationManager::class.java).notify(LAUNCH_ID, n)
         }
     }
 
@@ -37,6 +53,9 @@ class ScreenWatchService : Service() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL, "Lock screen games", NotificationManager.IMPORTANCE_MIN)
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(LAUNCH_CHANNEL, "Game launcher", NotificationManager.IMPORTANCE_HIGH)
         )
         val notification = Notification.Builder(this, CHANNEL)
             .setContentTitle("Lock screen games are on")
@@ -63,6 +82,8 @@ class ScreenWatchService : Service() {
     companion object {
         private const val CHANNEL = "lockscreen_games"
         private const val ID = 1
+        private const val LAUNCH_CHANNEL = "lockscreen_launch"
+        const val LAUNCH_ID = 2
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, ScreenWatchService::class.java))

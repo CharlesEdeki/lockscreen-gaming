@@ -48,7 +48,11 @@ class LockGameActivity : Activity() {
         )
     }
 
-    override fun onResume() { super.onResume(); view?.resume() }
+    override fun onResume() {
+        super.onResume()
+        getSystemService(android.app.NotificationManager::class.java).cancel(ScreenWatchService.LAUNCH_ID)
+        view?.resume()
+    }
     override fun onPause() { view?.pause(); super.onPause() }
 
     private companion object {

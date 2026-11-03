@@ -31,6 +31,16 @@ class MainActivity : Activity() {
                 )
             }
         }
+        val fullScreen = Button(this).apply {
+            text = "2. Allow full-screen notifications"
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT >= 34) {
+                    startActivity(
+                        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
+                    )
+                }
+            }
+        }
         toggle = Button(this).apply { setOnClickListener { onToggle() } }
 
         setContentView(
@@ -41,6 +51,7 @@ class MainActivity : Activity() {
                 addView(TextView(context).apply { text = "Lock Arcade"; textSize = 28f })
                 addView(status)
                 addView(grant)
+                addView(fullScreen)
                 addView(toggle)
             }
         )
@@ -70,7 +81,7 @@ class MainActivity : Activity() {
         val overlay = Settings.canDrawOverlays(this)
         status.text = "Overlay permission: ${if (overlay) "granted" else "needed"}\n" +
             "Lock screen games: ${if (enabled) "ON" else "OFF"}"
-        toggle.text = if (enabled) "2. Turn off" else "2. Turn on"
+        toggle.text = if (enabled) "3. Turn off" else "3. Turn on"
     }
 
     private companion object {
